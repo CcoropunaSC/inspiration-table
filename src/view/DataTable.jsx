@@ -3,14 +3,25 @@ import {
   flexRender,
   getCoreRowModel,
   useReactTable,
-  getPaginationRowModel
+  getPaginationRowModel,
+  getFilteredRowModel
 } from '@tanstack/react-table'
 import { defaultData } from '../utils/defaultData'
 import classNames from 'classnames'
-import { info } from 'autoprefixer'
+import { rankItem } from '@tanstack/match-sorter-utils'
+
+const fuzzyFilter = (row, columnId, value, addMeta) => {
+  const itemRank = rankItem(row.getValue(columnId), value)
+
+  addMeta({itemRank})
+
+  return itemRank.passed
+}
 
 const DataTable = () => {
   const [data, setData] = useState(defaultData)
+  const [globalFilter, setGlobalFilter] = useState('')
+  console.log(globalFilter);
 
   const columns = [
     {
@@ -46,12 +57,24 @@ const DataTable = () => {
   const table = useReactTable({
     data,
     columns,
+    state: {
+      globalFilter
+    },
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel()
+    getPaginationRowModel: getPaginationRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    globalFilterFn: fuzzyFilter
   })
 
   return (
     <div className='px-6 py-4'>
+      <div className='my-2 text-right'>
+        <input
+          type="text"
+          onChange={e => setGlobalFilter(e.target.value)}
+          className='p-2 text-gray-600 border border-gray-300 rounded outline-indigo-700'
+          placeholder='Buscar...' />
+      </div>
       <table className='table-auto w-full'>
         <thead>
           {table.getHeaderGroups().map(headerGroup => (
@@ -103,12 +126,12 @@ const DataTable = () => {
           </button>
 
           {table.getPageOptions().map((value, key) => (
-            <button key={key} 
-            className={classNames({
-              "text-gray-600 bg-gray-200 py-0.5 px-2 font-bold rounded border border-gray-300 disabled:hover:bg-white disabled:hover:text-gray-300": true,
-              "bg-indigo-200 text-indigo-700" : value === table.getState().pagination.pageIndex
-            })}
-            onClick={() => table.setPageIndex(value)}>
+            <button key={key}
+              className={classNames({
+                "text-gray-600 bg-gray-200 py-0.5 px-2 font-bold rounded border border-gray-300 disabled:hover:bg-white disabled:hover:text-gray-300": true,
+                "bg-indigo-200 text-indigo-700": value === table.getState().pagination.pageIndex
+              })}
+              onClick={() => table.setPageIndex(value)}>
               {value + 1}
             </button>
           ))}
@@ -129,15 +152,15 @@ const DataTable = () => {
           </button>
         </div>
         <div className='text-gray-600 font-semibold'>
-            Mostrando de {Number(table.getRowModel().rows[0].id) + 1}&nbsp; 
-            a {Number(table.getRowModel().rows[table.getRowModel().rows.length - 1].id) + 1}&nbsp;
-            del total de {defaultData.length} registros
+          Mostrando de {Number(table.getRowModel().rows[0]?.id) + 1}&nbsp;
+          a {Number(table.getRowModel().rows[table.getRowModel().rows.length - 1]?.id) + 1}&nbsp;
+          del total de {defaultData.length} registros
         </div>
-        <select 
-        className='text-gray-600 border border-gray-300 rounded outline-indigo-700'
-        onChange={e => {
-          table.setPageSize(Number(e.target.value))
-        }}>
+        <select
+          className='text-gray-600 border border-gray-300 rounded outline-indigo-700'
+          onChange={e => {
+            table.setPageSize(Number(e.target.value))
+          }}>
           <option value="10">10 pág.</option>
           <option value="20">20 pág.</option>
           <option value="25">25 pág.</option>
