@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   flexRender,
   getCoreRowModel,
@@ -13,9 +13,27 @@ import { rankItem } from '@tanstack/match-sorter-utils'
 const fuzzyFilter = (row, columnId, value, addMeta) => {
   const itemRank = rankItem(row.getValue(columnId), value)
 
-  addMeta({itemRank})
+  addMeta({ itemRank })
 
   return itemRank.passed
+}
+
+const DebouncedInput = ({value:keyWord, onChange, ...props}) => {
+  const [value, setValue] = useState(keyWord);
+  // console.log(value);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      console.log('Filterd');
+      onChange(value);
+    }, 500)
+
+    return () => clearTimeout(timeout);
+  }, [value])
+
+  return (
+    <input {...props} value={value} onChange={e => setValue(e.target.value)} />
+  )
 }
 
 const DataTable = () => {
@@ -54,11 +72,32 @@ const DataTable = () => {
     }
   ]
 
+  const getStateTable = () => {
+    const totalRows = table.getFilteredRowModel().rows.length;
+    const pageSize = table.getState().pagination.pageSize;
+    const pageIndex = table.getState().pagination.pageIndex;
+    const rowsPerPage = table.getRowModel().rows.length;
+
+    const firstIndex = (pageIndex * pageSize) + 1;
+    const lastIndex = (pageIndex * pageSize) + rowsPerPage;
+
+    return {
+      totalRows,
+      firstIndex,
+      lastIndex
+    }
+  }
+
   const table = useReactTable({
     data,
     columns,
     state: {
       globalFilter
+    },
+    initialState: {
+      pagination: {
+        pageSize: 5
+      }
     },
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -69,11 +108,13 @@ const DataTable = () => {
   return (
     <div className='px-6 py-4'>
       <div className='my-2 text-right'>
-        <input
+        <DebouncedInput
           type="text"
-          onChange={e => setGlobalFilter(e.target.value)}
+          value={globalFilter ?? ''}
+          onChange={value => setGlobalFilter(String(value))}
           className='p-2 text-gray-600 border border-gray-300 rounded outline-indigo-700'
-          placeholder='Buscar...' />
+          placeholder='Buscar...'
+        />
       </div>
       <table className='table-auto w-full'>
         <thead>
@@ -152,15 +193,16 @@ const DataTable = () => {
           </button>
         </div>
         <div className='text-gray-600 font-semibold'>
-          Mostrando de {Number(table.getRowModel().rows[0]?.id) + 1}&nbsp;
-          a {Number(table.getRowModel().rows[table.getRowModel().rows.length - 1]?.id) + 1}&nbsp;
-          del total de {defaultData.length} registros
+          Mostrando de {getStateTable().firstIndex}&nbsp;
+          a {getStateTable().lastIndex}&nbsp;
+          del total de {getStateTable().totalRows} registros
         </div>
         <select
           className='text-gray-600 border border-gray-300 rounded outline-indigo-700'
           onChange={e => {
             table.setPageSize(Number(e.target.value))
           }}>
+          <option value="5">5 pág.</option>
           <option value="10">10 pág.</option>
           <option value="20">20 pág.</option>
           <option value="25">25 pág.</option>
