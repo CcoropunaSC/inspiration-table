@@ -4,7 +4,8 @@ import {
   getCoreRowModel,
   useReactTable,
   getPaginationRowModel,
-  getFilteredRowModel
+  getFilteredRowModel,
+  getSortedRowModel
 } from '@tanstack/react-table'
 import { defaultData } from '../utils/defaultData'
 import classNames from 'classnames'
@@ -18,7 +19,7 @@ const fuzzyFilter = (row, columnId, value, addMeta) => {
   return itemRank.passed
 }
 
-const DebouncedInput = ({value:keyWord, onChange, ...props}) => {
+const DebouncedInput = ({ value: keyWord, onChange, ...props }) => {
   const [value, setValue] = useState(keyWord);
   // console.log(value);
 
@@ -39,6 +40,7 @@ const DebouncedInput = ({value:keyWord, onChange, ...props}) => {
 const DataTable = () => {
   const [data, setData] = useState(defaultData)
   const [globalFilter, setGlobalFilter] = useState('')
+  const [sorting, setSorting] = useState([])
   console.log(globalFilter);
 
   const columns = [
@@ -68,7 +70,21 @@ const DataTable = () => {
             {info.getValue()}
           </span>
         )
-      }
+      },
+      enableSorting: true
+    },
+    {
+      accessorKey: 'actions',
+      header: 'Acciones',
+      cell: info => {
+        return (
+          <div className='space-x-2'>
+            <button className='text-red-600'>Eliminar</button>
+            <button className='text-blue-600'>Editar</button>
+          </div>
+        )
+      },
+      enableSorting: false
     }
   ]
 
@@ -92,7 +108,8 @@ const DataTable = () => {
     data,
     columns,
     state: {
-      globalFilter
+      globalFilter,
+      sorting
     },
     initialState: {
       pagination: {
@@ -102,7 +119,9 @@ const DataTable = () => {
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    globalFilterFn: fuzzyFilter
+    globalFilterFn: fuzzyFilter,
+    getSortedRowModel: getSortedRowModel(),
+    onSortingChange: setSorting
   })
 
   return (
@@ -124,10 +143,22 @@ const DataTable = () => {
                 <th key={header.id} className="py-2 px-4 text-left uppercase">
                   {header.isPlaceholder
                     ? null
-                    : flexRender(
-                      header.column.columnDef.header,
-                      header.getContext()
-                    )
+                    :
+                    <div
+                      className={classNames({
+                        'cursor-pointer select-none': header.column.getCanSort(),
+                      })}
+                      onClick={header.column.getToggleSortingHandler()}
+                    >
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                      {{
+                        asc: ' 🔼',
+                        desc: ' 🔽'
+                      }[header.column.getIsSorted()] ?? null}
+                    </div>
                   }
                 </th>
               ))}
